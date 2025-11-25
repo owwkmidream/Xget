@@ -1,20 +1,20 @@
-name: Sync to Pages
+name: Sync to Pages and Functions
 
 on:
   push:
     branches:
       - main
     paths-ignore:
-      - '**.md'
-      - 'LICENSE'
-      - '.gitignore'
-      - '.editorconfig'
-      - '.vscode/**'
-      - 'docs/**'
-      - '.prettierrc*'
-      - '.eslintrc*'
-      - '.github/ISSUE_TEMPLATE/**'
-      - '.github/PULL_REQUEST_TEMPLATE/**'
+      - "**.md"
+      - "LICENSE"
+      - ".gitignore"
+      - ".editorconfig"
+      - ".vscode/**"
+      - "docs/**"
+      - ".prettierrc*"
+      - ".eslintrc*"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/PULL_REQUEST_TEMPLATE/**"
   workflow_dispatch:
 
 concurrency:
@@ -22,7 +22,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  convert-and-sync:
+  convert-and-sync-pages:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -168,12 +168,6 @@ jobs:
 
           Auto-converted from main branch commit ${{ github.sha }}
 
-          Changes:
-          - Add functions/[[path]].js: Catch-all Pages Function handler
-          - Update src/index.js: Export handleRequest for Pages Function import
-          - Update wrangler.toml: Configure for Pages deployment (no observability)
-          - Update package.json: Change scripts to use Pages commands
-
           Runtime files only (documentation, tests, and dev configs excluded)."
 
       - name: Force push to pages branch
@@ -186,3 +180,244 @@ jobs:
         if: always()
         run: |
           rm -rf /tmp/pages-conversion
+
+  convert-and-sync-functions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create temporary working directory
+        run: |
+          mkdir -p /tmp/functions-conversion
+          cd /tmp/functions-conversion
+
+      - name: Copy source code files only
+        run: |
+          # Copy only runtime-required files
+          cp -r src /tmp/functions-conversion/
+          cp package.json /tmp/functions-conversion/
+          cp package-lock.json /tmp/functions-conversion/ 2>/dev/null || true
+          cp LICENSE /tmp/functions-conversion/
+
+      - name: Create Edge Function handler
+        run: |
+          mkdir -p /tmp/functions-conversion/api
+          cat > /tmp/functions-conversion/api/index.js << 'EOF'
+          /**
+           * Xget - High-performance acceleration engine for developer resources
+           * Copyright (C) 2025 Xi Xu
+           *
+           * This program is free software: you can redistribute it and/or modify
+           * it under the terms of the GNU General Public License as published by
+           * the Free Software Foundation, either version 3 of the License, or
+           * (at your option) any later version.
+           *
+           * This program is distributed in the hope that it will be useful,
+           * but WITHOUT ANY WARRANTY; without even the implied warranty of
+           * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+           * GNU General Public License for more details.
+           *
+           * You should have received a copy of the GNU General Public License
+           * along with this program. If not, see <https://www.gnu.org/licenses/>.
+           */
+
+          import { handleRequest } from '../src/index.js';
+
+          /**
+           * Edge Function handler.
+           *
+           * @param {Request} request - Standard Web API Request object
+           * @param {Object} [context] - Platform-specific context (Netlify only)
+           * @param {Object} [context.geo] - Geolocation data (Netlify)
+           * @param {string} [context.ip] - Client IP address (Netlify)
+           * @param {Object} [context.env] - Environment variables (Netlify)
+           * @param {Function} [context.waitUntil] - Background task extension (Netlify)
+           * @returns {Promise<Response>} Standard Web API Response
+           *
+           * @example
+           * // Netlify invokes with context
+           * handler(request, { geo: {...}, ip: '1.2.3.4', env: {...}, waitUntil: fn })
+           *
+           * @example
+           * // Vercel invokes without context
+           * handler(request)
+           */
+          export default async function handler(request, context) {
+            // Detect runtime environment
+            const isNetlify = context && (context.geo !== undefined || context.ip !== undefined);
+            const isVercel = !isNetlify && context;
+
+            // Normalize environment variables
+            // Netlify provides context.env, Vercel Edge uses globalThis
+            let envSource;
+            if (isNetlify) {
+              envSource = context.env || {};
+            } else if (typeof process !== 'undefined' && process.env) {
+              // Vercel or Node.js environment
+              envSource = process.env;
+            } else {
+              // Fallback for other environments
+              envSource = {};
+            }
+
+            const env = {
+              TIMEOUT_SECONDS: envSource.TIMEOUT_SECONDS,
+              MAX_RETRIES: envSource.MAX_RETRIES,
+              RETRY_DELAY_MS: envSource.RETRY_DELAY_MS,
+              CACHE_DURATION: envSource.CACHE_DURATION,
+              ALLOWED_METHODS: envSource.ALLOWED_METHODS,
+              ALLOWED_ORIGINS: envSource.ALLOWED_ORIGINS,
+              MAX_PATH_LENGTH: envSource.MAX_PATH_LENGTH,
+            };
+
+            // Create normalized execution context
+            const ctx = {
+              waitUntil: isNetlify && context.waitUntil
+                ? (promise) => context.waitUntil(promise)
+                : (promise) => {
+                    // No-op on Vercel: background tasks not supported
+                    // Cache writes will run synchronously instead
+                    console.warn('waitUntil is not supported in Vercel Edge Runtime');
+                  },
+              passThroughOnException: () => {
+                // Not supported on either platform in this context
+                console.warn('passThroughOnException is not universally supported');
+              }
+            };
+
+            // Delegate to the main request handler
+            return handleRequest(request, env, ctx);
+          }
+
+          // Vercel Edge Runtime configuration (ignored by Netlify)
+          export const config = {
+            runtime: 'edge',
+          };
+          EOF
+
+      - name: Create vercel.json
+        run: |
+          cd /tmp/functions-conversion
+          cat > vercel.json << 'EOF'
+          {
+            "$schema": "https://openapi.vercel.sh/vercel.json",
+            "name": "xget",
+            "version": 2,
+            "rewrites": [
+              {
+                "source": "/(.*)",
+                "destination": "/api/index.js"
+              }
+            ],
+            "headers": [
+              {
+                "source": "/(.*)",
+                "headers": [
+                  {
+                    "key": "X-Powered-By",
+                    "value": "Xget/Vercel"
+                  }
+                ]
+              }
+            ]
+          }
+          EOF
+
+      - name: Create netlify.toml
+        run: |
+          cd /tmp/functions-conversion
+          cat > netlify.toml << 'EOF'
+          [[edge_functions]]
+          function = "edge-handler"
+          path = "/*"
+
+          [build]
+          publish = "."
+          EOF
+
+      - name: Create Netlify Edge Function redirect
+        run: |
+          cd /tmp/functions-conversion
+          mkdir -p netlify/edge-functions
+          cat > netlify/edge-functions/edge-handler.js << 'EOF'
+          /**
+           * Netlify Edge Function entry point.
+           *
+           * This file serves as a redirect to the edge function handler
+           * located at /api/index.js. Both Netlify and Vercel can use the same
+           * handler code, with platform detection handling the differences.
+           *
+           * Netlify requires edge functions to be in netlify/edge-functions/,
+           * while Vercel uses /api/ directory. This approach maintains a single
+           * source of truth at /api/index.js.
+           */
+          export { default, config } from '../../api/index.js';
+          EOF
+
+      - name: Export handleRequest from src/index.js
+        run: |
+          cd /tmp/functions-conversion
+          # Add export statement before the default export at the end of the file
+          sed -i '/^export default {$/i\
+          export { handleRequest };' src/index.js
+
+      - name: Update package.json for Vercel
+        run: |
+          cd /tmp/functions-conversion
+          cat > package.json << 'EOF'
+          {
+            "name": "xget",
+            "version": "1.0.0",
+            "type": "module",
+            "private": false,
+            "scripts": {
+              "dev": "vercel dev",
+              "deploy": "vercel --prod",
+              "vercel-build": "echo 'No build step required'"
+            },
+            "dependencies": {
+              "express": "^4.19.2"
+            },
+            "devDependencies": {
+              "@vercel/node": "^3.0.0"
+            }
+          }
+          EOF
+
+      - name: Initialize functions branch
+        run: |
+          cd /tmp/functions-conversion
+          git init
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b functions
+          git add .
+          git commit -m "Convert Workers to Functions
+
+          Auto-converted from main branch commit ${{ github.sha }}
+
+          Runtime files only (documentation, tests, and dev configs excluded)."
+
+      - name: Force push to functions branch
+        run: |
+          cd /tmp/functions-conversion
+          git remote add origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          git push -f origin functions
+
+      - name: Clean up
+        if: always()
+        run: |
+          rm -rf /tmp/functions-conversion

@@ -7,6 +7,8 @@
 
 [![Cloudflare](https://img.shields.io/badge/Cloudflare-F38020?&logo=cloudflare&logoColor=white)](#deploy-to-cloudflare-workers)
 [![EdgeOne](https://img.shields.io/badge/EdgeOne-006EFF?&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABwAAAAcCAYAAAByDd+UAAACNklEQVR4nJ1W7XHbMAx96ul/lQnCDapOUG3gdIIkG6QjdINOUGeDNhNYmUDuBHIWiNQF/PqDYAxDoMUGdzx+AXgAAQGqSKKAOgAbma8BXMn5DGAv4wlAv6qJ5KVxR3LkOR3NWu9HkcnqzF0EkoMDcsysLd8oOooAb0lOF7wqpYnkzRrgZkVJ8mp0jLFzotscYOC6ZyNjjLbOnTZI7weSjQc4ZoQmkjuSneIdMoADyR9iVKuB0qglWYOT0n9Uys/qPAD4ZHgfAXwzfO/6LLyxcTxbJEdufFi1aEk32l6Z+1Lhep1lQa1aVwI2O3wBsTIFxOoUADzVspgzQp6S1pztATRyvpG5lTNLTUVykssJwF91OQP4bATuAGzVngBexJD0vJW51/u5VpZc4VSUgViMLX1xlIUCoERNLoYE8Ns579S6chTngGYZh1oWjRGoEGOjKSAGP/HovqblDoiJtAfwLPv5xHnqCrbNeK3K8qX9juQDMx3CVpoesXLop7DeATF+2rsKsbo8oizD3zzsjLWk30RHw7N7R5V68/AgMUpeWg9bLLOxL/AniOw1Yp58t/FZi5+mzuFrJJY/Sb6qFzmmV9PMgzBsHUW/eN5gJwdk54Rm4YTXgHPx00p24qEGydFElb3e09nUbpXVuZ+oS/88Z62rJLMelHAJSDqf6LxWSXvS35/+Vr0SlqrPHsBXxOw/o5IGHDLKE4AucS8A7hG7zAIMACryv371WxkfxYhZFD8jFvt+TdE/deK28xBAUlEAAAAASUVORK5CYII=)](#deploy-to-edgeone-pages)
+[![Vercel](https://img.shields.io/badge/Vercel-000000?&logo=vercel&logoColor=white)](#deploy-to-vercel)
+[![Netlify](https://img.shields.io/badge/Netlify-00C7B7?&logo=netlify&logoColor=white)](#deploy-to-netlify)
 [![Docker](https://img.shields.io/badge/Docker-2496ED?&logo=docker&logoColor=white)](#self-hosted-deployment)
 [![Podman](https://img.shields.io/badge/Podman-892CA0?&logo=podman&logoColor=white)](#self-hosted-deployment)
 [![Chromium](https://img.shields.io/badge/Chromium-4285F4?logo=googlechrome&logoColor=white)](#-ecosystem-integration)
@@ -2360,7 +2362,7 @@ client = OpenAI(
 3. **Configure GitHub Secrets**:
    - Go to your GitHub repository → Settings → Secrets and variables → Actions
    - Add the following secret:
-     - `EDGEONE_PAGES_API_TOKEN`: Your EdgeOne Pages API Token
+     - `EDGEONE_PAGES_API_TOKEN`: Your API Token
 
 4. **Trigger deployment**:
    - The repository will automatically convert Workers code to Pages-compatible format and sync to the `pages` branch
@@ -2371,6 +2373,56 @@ client = OpenAI(
 5. **Bind custom domain** (optional): Bind your custom domain in the EdgeOne Pages console
 
 **Note**: The `pages` branch is automatically generated from the `main` branch. Do not manually edit the `pages` branch as it will be overwritten by the sync workflow.
+
+### Deploy to Vercel
+
+1. **Fork this repository**: [Fork xixu-me/Xget](https://github.com/xixu-me/Xget/fork)
+
+2. **Get Vercel credentials**:
+   - Visit [Vercel Account Settings](https://vercel.com/account/settings/tokens) to create and note an Access Token
+   - Visit Team Settings to note the Team ID
+   - Visit project's Settings after creating a new project to note the Project ID
+
+3. **Configure GitHub Secrets**:
+   - Go to your GitHub repository → Settings → Secrets and variables → Actions
+   - Add the following secrets:
+     - `VERCEL_TOKEN`: Your Access Token
+     - `VERCEL_ORG_ID`: Your Team ID
+     - `VERCEL_PROJECT_ID`: Your Project ID
+
+4. **Trigger deployment**:
+   - The repository will automatically convert Workers code to Functions-compatible format and sync to the `functions` branch
+   - Pushing code to the `main` branch will automatically trigger sync and deployment workflows
+   - Modifying only documentation files (`.md`), `LICENSE`, `.gitignore`, etc. will not trigger deployment
+   - You can also manually trigger deployment in the GitHub Actions page
+
+5. **Bind custom domain** (optional): Bind your custom domain in the Vercel console
+
+**Note**: The `functions` branch is automatically generated from the `main` branch. Do not manually edit the `functions` branch as it will be overwritten by the sync workflow.
+
+### Deploy to Netlify
+
+1. **Fork this repository**: [Fork xixu-me/Xget](https://github.com/xixu-me/Xget/fork)
+
+2. **Get Netlify credentials**:
+   - Visit [Netlify User Settings](https://app.netlify.com/user/applications) to create and note a personal access token
+   - Visit Project configuration after creating a new project to note the Project ID
+
+3. **Configure GitHub Secrets**:
+   - Go to your GitHub repository → Settings → Secrets and variables → Actions
+   - Add the following secrets:
+     - `NETLIFY_AUTH_TOKEN`: Your personal access token
+     - `NETLIFY_SITE_ID`: Your Project ID
+
+4. **Trigger deployment**:
+   - The repository will automatically convert Workers code to Functions-compatible format and sync to the `functions` branch
+   - Pushing code to the `main` branch will automatically trigger sync and deployment workflows
+   - Modifying only documentation files (`.md`), `LICENSE`, `.gitignore`, etc. will not trigger deployment
+   - You can also manually trigger deployment in the GitHub Actions page
+
+5. **Bind custom domain** (optional): Bind your custom domain in the Netlify console
+
+**Note**: The `functions` branch is automatically generated from the `main` branch. Do not manually edit the `functions` branch as it will be overwritten by the sync workflow.
 
 ### Self-Hosted Deployment
 

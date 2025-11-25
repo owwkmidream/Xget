@@ -1,4 +1,4 @@
-name: Deploy to EdgeOne Pages
+name: Deploy to Netlify
 
 on:
   workflow_run:
@@ -23,15 +23,19 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     steps:
-      - name: Checkout pages branch
+      - name: Checkout functions branch
         uses: actions/checkout@v6
         with:
-          ref: pages
+          ref: functions
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: "22.11.0"
+          node-version: "20"
+          cache: "npm"
 
-      - name: Deploy to EdgeOne Pages
-        run: npx edgeone pages deploy . -n xget6 -t ${{ secrets.EDGEONE_API_TOKEN }}
+      - name: Install Netlify CLI
+        run: npm install --global netlify-cli@latest
+
+      - name: Deploy to Netlify
+        run: netlify deploy --prod --dir=. --auth=${{ secrets.NETLIFY_AUTH_TOKEN }} --site=${{ secrets.NETLIFY_SITE_ID }}
