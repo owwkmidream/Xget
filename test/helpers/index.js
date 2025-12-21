@@ -12,14 +12,15 @@ export * from './mocks.js';
  */
 export class PerformanceTestHelper {
   constructor() {
+    /** @type {Array<{name: string, duration: number, timestamp: number}>} */
     this.measurements = [];
   }
 
   /**
    * Measure execution time of an async function
-   * @param {Function} fn - Async function to measure
+   * @param {() => Promise<unknown>} fn - Async function to measure
    * @param {string} name - Measurement name
-   * @returns {Promise<any>} Function result
+   * @returns {Promise<unknown>} Function result
    */
   async measure(fn, name = 'operation') {
     const start = performance.now();
@@ -37,7 +38,7 @@ export class PerformanceTestHelper {
 
   /**
    * Get all measurements
-   * @returns {Array} Array of measurements
+   * @returns {Array<{name: string, duration: number, timestamp: number}>} Array of measurements
    */
   getMeasurements() {
     return [...this.measurements];
@@ -69,7 +70,7 @@ export class PerformanceTestHelper {
 /**
  * Test timeout helper
  * @param {number} ms - Timeout in milliseconds
- * @returns {Promise} Promise that rejects after timeout
+ * @returns {Promise<never>} Promise that rejects after timeout
  */
 export function timeout(ms) {
   return new Promise((_, reject) => {
@@ -80,7 +81,7 @@ export function timeout(ms) {
 /**
  * Wait for a specified amount of time
  * @param {number} ms - Time to wait in milliseconds
- * @returns {Promise} Promise that resolves after the specified time
+ * @returns {Promise<void>} Promise that resolves after the specified time
  */
 export function wait(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
