@@ -16,7 +16,8 @@ describe('Platform Configuration', () => {
         'npm',
         'pypi',
         'conda',
-        'homebrew'
+        'homebrew',
+        'scoop'
       ];
 
       requiredPlatforms.forEach(platform => {
@@ -143,6 +144,14 @@ describe('Platform Configuration', () => {
         '/v2/distroless/base/manifests/latest'
       );
     });
+
+    it('should transform Scoop paths correctly', () => {
+      expect(transformPath('/scoop/Main.git/info/refs', 'scoop')).toBe('/Main.git/info/refs');
+
+      expect(transformPath('/scoop/Main/blob/master/bucket/git.json', 'scoop')).toBe(
+        '/Main/blob/master/bucket/git.json'
+      );
+    });
   });
 
   describe('Platform Base URLs', () => {
@@ -189,6 +198,10 @@ describe('Platform Configuration', () => {
     it('should have correct conda base URLs', () => {
       expect(PLATFORMS.conda).toBe('https://repo.anaconda.com');
       expect(PLATFORMS['conda-community']).toBe('https://conda.anaconda.org');
+    });
+
+    it('should have correct Scoop base URL', () => {
+      expect(PLATFORMS.scoop).toBe('https://github.com/ScoopInstaller');
     });
 
     it('should have correct container registry base URLs', () => {
@@ -328,6 +341,10 @@ describe('Platform Configuration', () => {
         expect(PLATFORMS[registry]).toBeDefined();
         expect(typeof PLATFORMS[registry]).toBe('string');
       });
+    });
+
+    it('should use the correct Amazon ECR Public base URL', () => {
+      expect(PLATFORMS['cr-ecr']).toBe('https://public.ecr.aws');
     });
 
     it('should transform all container registry paths correctly', () => {
