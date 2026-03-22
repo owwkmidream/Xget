@@ -19,6 +19,7 @@ jobs:
   commitlint:
     name: Validate Commit Messages
     runs-on: ubuntu-latest
+    if: ${{ github.actor != 'dependabot[bot]' }}
     timeout-minutes: 10
     steps:
       - name: Checkout
@@ -29,7 +30,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          node-version: "24"
           cache: "npm"
 
       - name: Install dependencies

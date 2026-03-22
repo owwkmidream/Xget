@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { PLATFORMS, transformPath } from '../../src/config/platforms.js';
+import { PLATFORM_CATALOG as PLATFORMS } from '../../src/config/platform-catalog.js';
+import { transformPath } from '../../src/routing/platform-transformers.js';
 
 describe('Platform Configuration', () => {
   describe('Platform Definitions', () => {
@@ -16,8 +17,8 @@ describe('Platform Configuration', () => {
         'npm',
         'pypi',
         'conda',
-        'homebrew',
-        'scoop'
+        'flathub',
+        'homebrew'
       ];
 
       requiredPlatforms.forEach(platform => {
@@ -135,6 +136,13 @@ describe('Platform Configuration', () => {
       ).toBe('/conda-forge/linux-64/repodata.json');
     });
 
+    it('should transform Flathub paths correctly', () => {
+      expect(transformPath('/flathub/repo/summary', 'flathub')).toBe('/repo/summary');
+      expect(transformPath('/flathub/repo/flathub.flatpakrepo', 'flathub')).toBe(
+        '/repo/flathub.flatpakrepo'
+      );
+    });
+
     it('should transform container registry paths correctly', () => {
       expect(
         transformPath('/cr/ghcr/v2/nginxinc/nginx-unprivileged/manifests/latest', 'cr-ghcr')
@@ -142,14 +150,6 @@ describe('Platform Configuration', () => {
 
       expect(transformPath('/cr/gcr/v2/distroless/base/manifests/latest', 'cr-gcr')).toBe(
         '/v2/distroless/base/manifests/latest'
-      );
-    });
-
-    it('should transform Scoop paths correctly', () => {
-      expect(transformPath('/scoop/Main.git/info/refs', 'scoop')).toBe('/Main.git/info/refs');
-
-      expect(transformPath('/scoop/Main/blob/master/bucket/git.json', 'scoop')).toBe(
-        '/Main/blob/master/bucket/git.json'
       );
     });
   });
@@ -200,8 +200,8 @@ describe('Platform Configuration', () => {
       expect(PLATFORMS['conda-community']).toBe('https://conda.anaconda.org');
     });
 
-    it('should have correct Scoop base URL', () => {
-      expect(PLATFORMS.scoop).toBe('https://github.com/ScoopInstaller');
+    it('should have correct Flathub base URL', () => {
+      expect(PLATFORMS.flathub).toBe('https://dl.flathub.org');
     });
 
     it('should have correct container registry base URLs', () => {

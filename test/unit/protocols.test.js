@@ -2,7 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import worker from '../../src/index.js';
 import { CONFIG } from '../../src/config/index.js';
 import { isAIInferenceRequest } from '../../src/protocols/ai.js';
-import { getScopeFromUrl, handleDockerAuth } from '../../src/protocols/docker.js';
+import {
+  getScopeFromUrl,
+  handleDockerAuth,
+  readRegistryTokenResponse
+} from '../../src/protocols/docker.js';
 import { isDockerRequest } from '../../src/utils/validation.js';
 
 /** @type {ExecutionContext} */
@@ -125,6 +129,25 @@ describe('Docker Authentication', () => {
     );
   });
 
+  it('routes host-style registry manifests through the upstream v2 API', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('', {
+        status: 200,
+        headers: { 'Content-Length': '0' }
+      })
+    );
+
+    const request = new Request('https://example.com/v2/cr/ghcr/xixu-me/xget/manifests/latest', {
+      method: 'HEAD'
+    });
+    const response = await worker.fetch(request, {}, executionContext);
+
+    expect(response.status).toBe(200);
+    expect(String(fetchSpy.mock.calls[0][0])).toBe(
+      'https://ghcr.io/v2/xixu-me/xget/manifests/latest'
+    );
+  });
+
   it('normalizes Docker Hub official image paths during proxying', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response('', {
@@ -173,6 +196,41 @@ describe('Docker Authentication', () => {
     expect(await response.text()).toContain('UNAUTHORIZED');
   });
 
+  it('follows 303 redirects for Docker registry responses without forwarding auth headers', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const headers = new Headers(init?.headers);
+      const url = String(input);
+
+      if (url === 'https://ghcr.io/v2/xixu-me/xget/manifests/latest') {
+        expect(headers.get('Authorization')).toBe('Bearer token123');
+        return new Response(null, {
+          status: 303,
+          headers: {
+            Location: 'https://pkg-containers.githubusercontent.com/manifest'
+          }
+        });
+      }
+
+      if (url === 'https://pkg-containers.githubusercontent.com/manifest') {
+        expect(headers.get('Authorization')).toBeNull();
+        return new Response('', {
+          status: 200,
+          headers: { 'Content-Length': '0' }
+        });
+      }
+
+      throw new Error(`Unexpected fetch URL: ${url}`);
+    });
+
+    const request = new Request('https://example.com/v2/cr/ghcr/xixu-me/xget/manifests/latest', {
+      headers: { Authorization: 'Bearer token123' }
+    });
+    const response = await worker.fetch(request, {}, executionContext);
+
+    expect(response.status).toBe(200);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
   it('accepts standard repository scopes on platform-prefixed auth endpoints', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async input => {
       const url = String(input);
@@ -199,6 +257,49 @@ describe('Docker Authentication', () => {
 
     expect(response.status).toBe(200);
     expect(String(fetchSpy.mock.calls[1][0])).toContain('scope=repository%3Aprivate%2Frepo%3Apull');
+  });
+
+  it('treats empty JSON token responses as unusable instead of throwing', async () => {
+    const token = await readRegistryTokenResponse(
+      new Response('', {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    );
+
+    expect(token).toBeNull();
+  });
+
+  it('falls back cleanly when the token service returns an empty success body', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    let callCount = 0;
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+      callCount++;
+
+      if (callCount === 1) {
+        return new Response('', {
+          status: 401,
+          headers: {
+            'WWW-Authenticate': 'Bearer realm="https://ghcr.io/token",service="ghcr.io"'
+          }
+        });
+      }
+
+      return new Response('', { status: 200 });
+    });
+
+    const request = new Request('https://example.com/cr/ghcr/v2/private/repo/manifests/latest', {
+      headers: { Accept: 'application/vnd.docker.distribution.manifest.v2+json' }
+    });
+    const response = await worker.fetch(request, {}, executionContext);
+
+    expect(response.status).toBe(401);
+    expect(response.headers.get('WWW-Authenticate')).toBe(
+      'Bearer realm="https://example.com/cr/ghcr/v2/auth",service="Xget"'
+    );
+    expect(await response.text()).toContain('UNAUTHORIZED');
+    expect(warnSpy).not.toHaveBeenCalled();
   });
 });
 
